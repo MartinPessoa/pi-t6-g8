@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Simples</title>
+    <style>body { font-family: sans-serif; padding: 20px; }</style>
+</head>
+<body>
+    <input id="texto" placeholder="Escreva algo">
+    <button onclick="salvar()">Enviar</button>
+    <ul id="lista"></ul>
+
+    <script>
+        const url = 'http://localhost:3000/dados';
+
+        async function carregar() {
+            const res = await fetch(url);
+            const dados = await res.json();
+            document.getElementById('lista').innerHTML = dados.map(d => `<li>${d.nome}</li>`).join('');
+        }
+
+        async function salvar() {
+            const nome = document.getElementById('texto').value;
+            await fetch(url, { method: 'POST', body: JSON.stringify({ nome }) });
+            carregar();
+        }
+
+        carregar();
+    </script>
+</body>
+</html>
