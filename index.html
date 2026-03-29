@@ -1,30 +1,330 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Simples</title>
-    <style>body { font-family: sans-serif; padding: 20px; }</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista da Mercearia</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f7f7f7;
+            color: #111;
+            padding: 10px;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+
+        .formulario {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f0f0f0;
+            border-radius: 8px;
+        }
+
+        .linha-form {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        input {
+            flex: 1;
+            min-width: 200px;
+            font-size: 1.2rem;
+            padding: 14px;
+            border: 2px solid #666;
+            border-radius: 8px;
+        }
+
+        button {
+            font-size: 1.2rem;
+            padding: 14px 20px;
+            border: 0;
+            border-radius: 8px;
+            background: #005fcc;
+            color: #fff;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        button:hover {
+            background: #0047a3;
+        }
+
+        #mensagem {
+            margin: 12px 0;
+            font-size: 1rem;
+            color: #0a5;
+            font-weight: bold;
+        }
+
+        #mensagem.erro {
+            color: #c33;
+        }
+
+        .lista-container {
+            margin-top: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1rem;
+        }
+
+        thead {
+            background: #005fcc;
+            color: #fff;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        .acoes {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+
+        .btn-remover {
+            background: #dc3545;
+            padding: 8px 12px;
+            font-size: 0.95rem;
+        }
+
+        .btn-remover:hover {
+            background: #c82333;
+        }
+
+        .vazio {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .data {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+
+            .acoes {
+                flex-direction: column;
+            }
+
+            .btn-marcar, .btn-remover {
+                width: 100%;
+            }
+        }
+    </style>
 </head>
 <body>
-    <input id="texto" placeholder="Escreva algo">
-    <button onclick="salvar()">Enviar</button>
-    <ul id="lista"></ul>
+    <main>
+        <h1>📋 Lista da Mercearia</h1>
+
+        <div class="formulario">
+            <div class="linha-form">
+                <input id="nome" placeholder="Ex.: Arroz, leite, pao" autocomplete="off">
+                <input id="cliente" placeholder="Ex.: João Silva" autocomplete="off">
+            </div>
+            <button id="btn-salvar">Adicionar Item</button>
+            <p id="mensagem"></p>
+        </div>
+
+        <div class="lista-container">
+            <table id="tabela-recados">
+                <thead>
+                    <tr>
+                        <th>Item</th>
+                        <th>Cliente</th>
+                        <th>Data</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-recados">
+                    <tr class="vazio">
+                        <td colspan="4">Nenhum item na lista. Adicione um novo item acima!</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
 
     <script>
-        const url = 'http://localhost:3000/dados';
+        const API_URL = "http://localhost:3000/dados";
+        const nomeEl = document.getElementById("nome");
+        const clienteEl = document.getElementById("cliente");
+        const corpoRecadosEl = document.getElementById("corpo-recados");
+        const msgEl = document.getElementById("mensagem");
+        const btnSalvarEl = document.getElementById("btn-salvar");
 
-        async function carregar() {
-            const res = await fetch(url);
-            const dados = await res.json();
-            document.getElementById('lista').innerHTML = dados.map(d => `<li>${d.nome}</li>`).join('');
+        function formatarData(dataStr) {
+            if (!dataStr) return "-";
+            const data = new Date(dataStr);
+            return data.toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        async function renderizar() {
+            try {
+                const resposta = await fetch(API_URL);
+                if (!resposta.ok) {
+                    throw new Error("Erro ao carregar lista");
+                }
+                const dados = await resposta.json();
+
+                if (dados.length === 0) {
+                    corpoRecadosEl.innerHTML = `
+                        <tr class="vazio">
+                            <td colspan="4">Nenhum item na lista. Adicione um novo item acima!</td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                corpoRecadosEl.innerHTML = dados.map((item) => {
+                    return `
+                        <tr>
+                            <td><strong>${item.nome}</strong></td>
+                            <td>${item.cliente}</td>
+                            <td class="data">${formatarData(item.data_adicionado)}</td>
+                            <td>
+                                <div class="acoes">
+                                    <button class="btn-remover" onclick="removerItem(${item.id})">
+                                        Remover
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                }).join("");
+            } catch (erro) {
+                msgEl.textContent = "Erro ao carregar a lista. Verifique se o servidor está rodando.";
+                msgEl.classList.add("erro");
+                console.error(erro);
+            }
         }
 
         async function salvar() {
-            const nome = document.getElementById('texto').value;
-            await fetch(url, { method: 'POST', body: JSON.stringify({ nome }) });
-            carregar();
+            const nome = nomeEl.value.trim();
+            const cliente = clienteEl.value.trim();
+
+            if (!nome || !cliente) {
+                msgEl.textContent = "Por favor, preencha o item e o nome do cliente.";
+                msgEl.classList.add("erro");
+                return;
+            }
+
+            try {
+                const resposta = await fetch(API_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ nome, cliente })
+                });
+
+                if (!resposta.ok) {
+                    throw new Error("Erro ao salvar");
+                }
+
+                msgEl.textContent = "✓ Item adicionado com sucesso!";
+                msgEl.classList.remove("erro");
+                nomeEl.value = "";
+                clienteEl.value = "";
+                nomeEl.focus();
+                await renderizar();
+            } catch (erro) {
+                msgEl.textContent = "Erro ao salvar o item.";
+                msgEl.classList.add("erro");
+                console.error(erro);
+            }
         }
 
-        carregar();
+
+        async function removerItem(id) {
+            if (!confirm("Tem certeza que deseja remover este item?")) {
+                return;
+            }
+
+            try {
+                const resposta = await fetch(`${API_URL}/${id}`, {
+                    method: "DELETE"
+                });
+
+                if (!resposta.ok) {
+                    throw new Error("Erro ao remover");
+                }
+
+                msgEl.textContent = "✓ Item removido!";
+                msgEl.classList.remove("erro");
+                await renderizar();
+            } catch (erro) {
+                msgEl.textContent = "Erro ao remover o item.";
+                msgEl.classList.add("erro");
+                console.error(erro);
+            }
+        }
+
+        btnSalvarEl.addEventListener("click", salvar);
+        nomeEl.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                clienteEl.focus();
+            }
+        });
+        clienteEl.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                salvar();
+            }
+        });
+
+        renderizar();
     </script>
 </body>
 </html>
