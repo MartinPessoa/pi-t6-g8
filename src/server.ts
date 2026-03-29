@@ -1,9 +1,9 @@
 import { createServer, IncomingMessage, ServerResponse } from "node:http";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-type Recado = {
+type Item = {
   id?: number;
   nome: string;
   cliente: string;
@@ -12,13 +12,14 @@ type Recado = {
 
 const PORT = 3000;
 const DB_DIR = path.join(process.cwd(), "data");
-const DB_PATH = path.join(DB_DIR, "recados.sqlite");
+const DB_PATH = path.join(DB_DIR, "lista.sqlite");
+const INDEX_PATH = path.join(process.cwd(), "index.html");
 
 mkdirSync(DB_DIR, { recursive: true });
 
 const db = new DatabaseSync(DB_PATH);
 db.exec(`
-  CREATE TABLE IF NOT EXISTS recados (
+  CREATE TABLE IF NOT EXISTS itens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
     cliente TEXT NOT NULL,
@@ -26,9 +27,13 @@ db.exec(`
   )
 `);
 
-const selectRecadosStmt = db.prepare("SELECT id, nome, cliente, data_adicionado FROM recados ORDER BY data_adicionado DESC");
-const insertRecadoStmt = db.prepare("INSERT INTO recados (nome, cliente) VALUES (?, ?)");
-const deleteRecadoStmt = db.prepare("DELETE FROM recados WHERE id = ?");
+const SELECT_ALL = "SELECT id, nome, cliente, data_adicionado FROM itens ORDER BY data_adicionado DESC";
+const INSERT = "INSERT INTO itens (nome, cliente) VALUES (?, ?)";
+const DELETE = "DELETE FROM itens WHERE id = ?";
+
+const selectRecadosStmt = () => db.prepare(SELECT_ALL);
+const insertRecadoStmt = () => db.prepare(INSERT);
+const deleteRecadoStmt = () => db.prepare(DELETE);
 
 function applyCors(res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -73,15 +78,35 @@ createServer(async (req, res) => {
     return;
   }
 
-  if (req.url === "/dados" && req.method === "GET") {
-    const dados = selectRecadosStmt.all() as unknown as Recado[];
-    sendJson(res, 200, dados);
+  if (req.url === "/" && req.method === "GET") {
+    try {
+      const html = readFileSync(INDEX_PATH, "utf-8");
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.end(html);
+    } catch {
+      sendJson(res, 500, { erro: "Nao foi possivel carregar index.html" });
+    }
     return;
+  }
+
+  if (req.url === "/dados" && req.method === "GET") {
+    try{
+      console.log('select:',selectRecadosStmt)
+      const dados = selectRecadosStmt().all() as unknown as Item[];
+      sendJson(res, 200, dados);
+      return;
+    }
+    catch (error) {
+      console.error("Exceção - GET /dados:", error);
+      sendJson(res, 500, { erro: "Erro ao buscar dados" });
+      return
+    }
   }
 
   if (req.url === "/dados" && req.method === "POST") {
     try {
-      const body = (await readJsonBody(req)) as Partial<Recado>;
+      const body = (await readJsonBody(req)) as Partial<Item>;
       const nome = typeof body.nome === "string" ? body.nome.trim() : "";
       const cliente = typeof body.cliente === "string" ? body.cliente.trim() : "";
 
@@ -90,7 +115,7 @@ createServer(async (req, res) => {
         return;
       }
 
-      insertRecadoStmt.run(nome, cliente);
+      insertRecadoStmt().run(nome, cliente);
       sendJson(res, 201, { mensagem: "Salvo" });
     } catch {
       sendJson(res, 400, { erro: "JSON invalido." });
@@ -102,7 +127,7 @@ createServer(async (req, res) => {
   const deleteMatch = req.url?.match(/^\/dados\/(\d+)$/);
   if (deleteMatch && req.method === "DELETE") {
     const id = parseInt(deleteMatch[1], 10);
-    deleteRecadoStmt.run(id);
+    deleteRecadoStmt().run(id);
     sendJson(res, 200, { mensagem: "Item removido" });
     return;
   }

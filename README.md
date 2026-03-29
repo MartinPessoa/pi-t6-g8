@@ -43,14 +43,30 @@ npm run start     # Inicia servidor a partir de dist/server.js
 
 ## Como executar
 
-1. Inicie o backend:
+1. Instale as dependencias (se ja nao fez):
+
+```bash
+npm install
+```
+
+2. Inicie o servidor:
 
 ```bash
 npm run dev
 ```
 
-2. Abra `index.html` no navegador.
-3. Adicione itens. Eles ficam salvos no arquivo SQLite em `data/recados.sqlite`.
+Voce deve ver:
+```
+Servidor TypeScript rodando na porta 3000
+```
+
+3. Abra seu navegador em:
+
+```
+http://localhost:3000
+```
+
+E pronto! A lista aparece. Adicione itens, e eles ficam salvos automaticamente em `data/recados.sqlite`.
 
 ## API
 
