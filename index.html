@@ -194,7 +194,8 @@
     </main>
 
     <script>
-        const API_URL = "http://localhost:3000/dados";
+        // Use same-origin API so localhost and Render work without hardcoded host.
+        const API_URL = "/dados";
         const nomeEl = document.getElementById("nome");
         const clienteEl = document.getElementById("cliente");
         const corpoRecadosEl = document.getElementById("corpo-recados");
