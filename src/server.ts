@@ -10,7 +10,7 @@ type Item = {
   data_adicionado?: string;
 };
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3000;
 const DB_DIR = path.join(process.cwd(), "data");
 const DB_PATH = path.join(DB_DIR, "lista.sqlite");
 const INDEX_PATH = path.join(process.cwd(), "index.html");
