@@ -1,30 +1,31 @@
-# Projeto Univesp - TypeScript + SQLite
+# Projeto Integrador - Univesp
+## Turma 6 - Grupo 8
+- TypeScript + PostgreSQL
 
 Aplicacao simples de lista para mercearia, com foco em uso facil para publico idoso.
 
 ## Arquitetura atual
 
 - Backend em TypeScript (`src/server.ts`)
-- Persistencia em SQLite local com `node:sqlite`
-- Frontend (`index.html`) consome a API `GET/POST /dados`
-
-> Observacao: `node:sqlite` pode exibir aviso de recurso experimental em algumas versoes do Node 22.
+- Persistencia em PostgreSQL com `pg`
+- Frontend (`index.html`) consumindo a API `GET/POST/DELETE /dados`
 
 ## Modelo de Dados
 
-A tabela `recados` armazena itens que os clientes nao encontraram na loja:
+A tabela `itens` armazena itens que os clientes nao encontraram na loja:
 
 | Campo | Tipo | Descricao |
 |-------|------|-----------|
-| id | INTEGER | Chave primaria (auto-incremento) |
+| id | SERIAL | Chave primaria |
 | nome | TEXT | Nome do item (ex.: "Arroz integral 5kg") |
-| cliente | TEXT | Nome do cliente que solicitou (ex.: "João Silva") |
-| data_adicionado | DATETIME | Data/hora do registro (auto-gerado no servidor) |
+| cliente | TEXT | Nome do cliente que solicitou (ex.: "Joao Silva") |
+| data_adicionado | TIMESTAMP | Data/hora do registro (auto-gerado pelo banco) |
 
 ## Requisitos
 
-- Node.js 22+
+- Node.js 18+
 - npm
+- PostgreSQL local (para desenvolvimento)
 
 ## Instalar dependencias
 
@@ -32,60 +33,73 @@ A tabela `recados` armazena itens que os clientes nao encontraram na loja:
 npm install
 ```
 
+## Configurar ambiente local
+
+1. Copie o arquivo de exemplo:
+
+```bash
+cp .env.example .env
+```
+
+2. Ajuste `DATABASE_URL` no `.env` para o seu PostgreSQL local.
+
+Exemplo:
+
+```env
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pi_t6_g8
+PORT=3000
+NODE_ENV=development
+PGSSL=false
+AUTO_CREATE_DB=true
+```
+
+Se voce usar variaveis `PG*` (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`), o servidor tenta criar automaticamente o banco informado em `PGDATABASE` no startup (somente ambiente local).
+
 ## Scripts
 
 ```bash
-npm run dev       # Roda servidor TS com tsx (desenvolvimento)
+npm run dev       # Roda servidor TS com tsx
 npm run typecheck # Valida tipos sem gerar arquivos
 npm run build     # Compila TypeScript -> JavaScript em dist/
-npm run start     # Inicia servidor a partir de dist/server.js
+npm run start     # Inicia servidor compilado
 ```
 
-## Como executar
-
-1. Instale as dependencias (se ja nao fez):
-
-```bash
-npm install
-```
-
-2. Inicie o servidor:
+## Executar localmente
 
 ```bash
 npm run dev
 ```
 
-Voce deve ver:
-```
-Servidor TypeScript rodando na porta 3000
-```
+Abra no navegador:
 
-3. Abra seu navegador em:
-
-```
+```text
 http://localhost:3000
 ```
 
-E pronto! A lista aparece. Adicione itens, e eles ficam salvos automaticamente em `data/recados.sqlite`.
+Na primeira execucao, o backend cria automaticamente a tabela `itens` se ela nao existir.
+
+## Deploy no Render
+
+No servico Web do Render, configure as variaveis:
+
+- `DATABASE_URL`: URL do PostgreSQL gerenciado no Render
+- `NODE_ENV=production`
+- `PORT` (normalmente fornecida pelo Render)
+- `PGSSL=true` (se a conexao exigir SSL)
+
+Com isso, o mesmo codigo funciona localmente e em producao sem trocar query ou credencial no codigo.
 
 ## API
 
 ### GET /dados
-Retorna lista de todos os itens em ordem decrescente de data:
 
-```json
-[
-  {
-    "id": 1,
-    "nome": "Arroz integral",
-    "cliente": "Maria",
-    "data_adicionado": "2026-03-29 19:33:44"
-  }
-]
-```
+Retorna todos os itens em ordem decrescente de data.
 
 ### POST /dados
-Cria um novo item (campos obrigatorios: `nome`, `cliente`):
+
+Cria um novo item. Campos obrigatorios: `nome`, `cliente`.
+
+Exemplo:
 
 ```json
 {
@@ -94,9 +108,6 @@ Cria um novo item (campos obrigatorios: `nome`, `cliente`):
 }
 ```
 
-Resposta: `{ "mensagem": "Salvo" }`
-
 ### DELETE /dados/:id
-Remove um item da lista:
 
-Resposta: `{ "mensagem": "Item removido" }`
+Remove um item por ID.
