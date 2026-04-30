@@ -13,7 +13,8 @@ type Item = {
 
 const PORT = Number(process.env.PORT) || 3000;
 const INDEX_PATH = path.join(process.cwd(), "index.html");
-const DATABASE_URL = process.env.DATABASE_URL;
+const LIST_PATH = path.join(process.cwd(), "list.html");
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://postgres:teWGwGUviLhEptipHZXRIMmolMKhcbVS@postgres.railway.internal:5432/railway";
 const SHOULD_USE_SSL = process.env.PGSSL === "true" || process.env.NODE_ENV === "production";
 const PGHOST = process.env.PGHOST;
 const PGPORT = process.env.PGPORT ? Number(process.env.PGPORT) : 5432;
@@ -159,6 +160,18 @@ const server = createServer(async (req, res) => {
       res.end(html);
     } catch {
       sendJson(res, 500, { erro: "Nao foi possivel carregar index.html" });
+    }
+    return;
+  }
+
+  if ((req.url === "/list" || req.url === "/list.html") && req.method === "GET") {
+    try {
+      const html = readFileSync(LIST_PATH, "utf-8");
+      res.statusCode = 200;
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      res.end(html);
+    } catch {
+      sendJson(res, 500, { erro: "Nao foi possivel carregar list.html" });
     }
     return;
   }

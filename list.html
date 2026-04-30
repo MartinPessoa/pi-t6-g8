@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Recados - Visualização</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f7f7f7;
+            color: #111;
+            padding: 10px;
+        }
+
+        main {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+
+        .nav-links {
+            margin-bottom: 20px;
+        }
+
+        .nav-links a {
+            color: #005fcc;
+            text-decoration: none;
+            font-size: 1rem;
+        }
+
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+
+        .lista-container {
+            margin-top: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1rem;
+        }
+
+        thead {
+            background: #005fcc;
+            color: #fff;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            cursor: pointer;
+            user-select: none;
+            position: relative;
+        }
+
+        th:hover {
+            background: #0047a3;
+        }
+
+        th.sortable::after {
+            content: ' ⇅';
+            opacity: 0.5;
+        }
+
+        th.sorted-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+
+        th.sorted-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        tbody tr:hover {
+            background: #f9f9f9;
+        }
+
+        .vazio {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        .data {
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        #mensagem {
+            margin: 12px 0;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        #mensagem.erro {
+            color: #c33;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <div class="nav-links">
+            <a href="/">← Voltar para adicionar itens</a>
+        </div>
+
+        <h1>📊 Visualização de Recados</h1>
+        <p id="mensagem"></p>
+
+        <div class="lista-container">
+            <table id="tabela-recados">
+                <thead>
+                    <tr>
+                        <th class="sortable" data-column="id">ID</th>
+                        <th class="sortable" data-column="nome">Item</th>
+                        <th class="sortable" data-column="cliente">Cliente</th>
+                        <th class="sortable" data-column="data_adicionado">Data</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo-recados">
+                    <tr class="vazio">
+                        <td colspan="4">Carregando...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </main>
+
+    <script>
+        const API_URL = "/dados";
+        const corpoRecadosEl = document.getElementById("corpo-recados");
+        const msgEl = document.getElementById("mensagem");
+
+        let dadosOriginais = [];
+        let colunaAtual = null;
+        let direcaoAtual = 'asc';
+
+        function formatarData(dataStr) {
+            if (!dataStr) return "-";
+            const data = new Date(dataStr);
+            return data.toLocaleString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit"
+            });
+        }
+
+        function ordenarDados(coluna) {
+            if (colunaAtual === coluna) {
+                direcaoAtual = direcaoAtual === 'asc' ? 'desc' : 'asc';
+            } else {
+                colunaAtual = coluna;
+                direcaoAtual = 'asc';
+            }
+
+            dadosOriginais.sort((a, b) => {
+                let valorA = a[coluna];
+                let valorB = b[coluna];
+
+                // Handle null/undefined
+                if (valorA == null) valorA = '';
+                if (valorB == null) valorB = '';
+
+                // Convert to appropriate type for comparison
+                if (coluna === 'id') {
+                    valorA = Number(valorA);
+                    valorB = Number(valorB);
+                } else if (coluna === 'data_adicionado') {
+                    valorA = new Date(valorA).getTime();
+                    valorB = new Date(valorB).getTime();
+                } else {
+                    valorA = String(valorA).toLowerCase();
+                    valorB = String(valorB).toLowerCase();
+                }
+
+                if (valorA < valorB) return direcaoAtual === 'asc' ? -1 : 1;
+                if (valorA > valorB) return direcaoAtual === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            atualizarEstilosCabecalho();
+            renderizarTabela();
+        }
+
+        function atualizarEstilosCabecalho() {
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sorted-asc', 'sorted-desc');
+                if (th.dataset.column === colunaAtual) {
+                    th.classList.add(direcaoAtual === 'asc' ? 'sorted-asc' : 'sorted-desc');
+                }
+            });
+        }
+
+        function renderizarTabela() {
+            if (dadosOriginais.length === 0) {
+                corpoRecadosEl.innerHTML = `
+                    <tr class="vazio">
+                        <td colspan="4">Nenhum item na lista.</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            corpoRecadosEl.innerHTML = dadosOriginais.map((item) => {
+                return `
+                    <tr>
+                        <td>${item.id || '-'}</td>
+                        <td><strong>${item.nome || '-'}</strong></td>
+                        <td>${item.cliente || '-'}</td>
+                        <td class="data">${formatarData(item.data_adicionado)}</td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        async function carregarDados() {
+            try {
+                const resposta = await fetch(API_URL);
+                if (!resposta.ok) {
+                    throw new Error("Erro ao carregar lista");
+                }
+                dadosOriginais = await resposta.json();
+                renderizarTabela();
+            } catch (erro) {
+                msgEl.textContent = "Erro ao carregar a lista. Verifique se o servidor está rodando.";
+                msgEl.classList.add("erro");
+                console.error(erro);
+            }
+        }
+
+        // Add click listeners to sortable headers
+        document.querySelectorAll('th.sortable').forEach(th => {
+            th.addEventListener('click', () => {
+                ordenarDados(th.dataset.column);
+            });
+        });
+
+        carregarDados();
+    </script>
+</body>
+</html>
