@@ -208,46 +208,9 @@
             margin-top: 4px;
         }
 
-        #compra-sugestoes {
-            list-style: none;
-            margin: 0 0 12px;
-            padding: 0;
-            max-height: 220px;
-            overflow-y: auto;
-        }
-
-        #compra-sugestoes li {
-            margin-bottom: 6px;
-        }
-
-        #compra-sugestoes button {
-            width: 100%;
-            text-align: left;
-            background: #f0f0f0;
-            color: #111;
-            border: 2px solid #ccc;
-            font-weight: normal;
-        }
-
-        #compra-sugestoes button:hover {
-            border-color: #005fcc;
-        }
-
-        #compra-sugestoes button.selecionado {
-            background: #e7f1ff;
-            border-color: #005fcc;
-            font-weight: bold;
-        }
-
         .dica {
             margin: 0 0 8px;
             color: #555;
-        }
-
-        #compra-escolha {
-            padding: 10px;
-            background: #f0f0f0;
-            border-radius: 8px;
         }
 
         .botoes-dialogo {
@@ -306,37 +269,32 @@
     </main>
 
     <dialog id="dialogo-compra">
-        <form id="form-compra">
-            <h2>🛒 Registrar compra</h2>
-            <p>Pedido: <strong id="compra-pedido"></strong></p>
+        <h2>🛒 Registrar compra</h2>
+        <p>Pedido: <strong id="compra-pedido"></strong></p>
 
-            <label>Produto
-                <input id="compra-nome" autocomplete="off" required>
-            </label>
-            <label>Marca (opcional)
-                <input id="compra-marca" autocomplete="off">
-            </label>
+        <label>Quantidade comprada
+            <input id="compra-qtd" type="number" min="1" step="1" value="1">
+        </label>
+        <label>Produto
+            <input id="compra-nome" autocomplete="off">
+        </label>
+        <label>Marca (opcional)
+            <input id="compra-marca" autocomplete="off">
+        </label>
 
-            <p class="dica" id="compra-dica"></p>
-            <ul id="compra-sugestoes"></ul>
+        <p class="dica" id="compra-dica"></p>
+        <ul id="compra-produtos"></ul>
 
-            <label>Quantidade comprada
-                <input id="compra-qtd" type="number" min="1" step="1" value="1" required>
-            </label>
-
-            <p id="compra-escolha"></p>
-
-            <div class="botoes-dialogo">
-                <button type="button" class="btn-cancelar" id="btn-compra-cancelar">Cancelar</button>
-                <button type="submit">Registrar compra</button>
-            </div>
-        </form>
+        <div class="botoes-dialogo">
+            <button type="button" class="btn-cancelar" id="btn-compra-cancelar">Cancelar</button>
+        </div>
     </dialog>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
     <script src="db.js"></script>
     <script src="nav.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.1.0/fuse.min.js"></script>
+    <script src="produtos.js"></script>
     <script>
         const nomeEl = document.getElementById("nome");
         const clienteEl = document.getElementById("cliente");
@@ -444,132 +402,45 @@
 
         // ---- Registrar compra ----
         const dialogoEl = document.getElementById("dialogo-compra");
-        const formCompraEl = document.getElementById("form-compra");
         const compraPedidoEl = document.getElementById("compra-pedido");
         const compraNomeEl = document.getElementById("compra-nome");
         const compraMarcaEl = document.getElementById("compra-marca");
         const compraQtdEl = document.getElementById("compra-qtd");
-        const compraDicaEl = document.getElementById("compra-dica");
-        const compraSugestoesEl = document.getElementById("compra-sugestoes");
-        const compraEscolhaEl = document.getElementById("compra-escolha");
-
-        // Busca tolerante a erros de digitacao (ignora maiusculas e acentos).
-        // Nome e marca sao buscados separadamente para a marca nao "confundir" o nome.
-        const OPCOES_BUSCA = { threshold: 0.35, ignoreLocation: true, ignoreDiacritics: true };
-        let produtos = [];
-        let buscaNome;
-        let buscaMarca;
         let pedidoAtual = null;
-        let produtoSelecionado = null;
 
-        function textoProduto(produto) {
-            return produto.marca ? `${produto.nome} – ${produto.marca}` : produto.nome;
-        }
-
-        function mesmoTexto(a, b) {
-            return a.localeCompare(b, "pt-BR", { sensitivity: "accent" }) === 0;
-        }
-
-        function buscarParecidos() {
-            const nome = compraNomeEl.value.trim();
-            const marca = compraMarcaEl.value.trim();
-            if (!nome) return [];
-
-            let encontrados = buscaNome.search(nome).map((r) => r.item);
-            if (marca) {
-                const comMarca = new Set(buscaMarca.search(marca).map((r) => r.item));
-                encontrados = encontrados.filter((p) => comMarca.has(p));
-            }
-            return encontrados.slice(0, 8);
-        }
-
-        function atualizarEscolha() {
-            const nome = compraNomeEl.value.trim();
-            const marca = compraMarcaEl.value.trim();
-            if (produtoSelecionado) {
-                compraEscolhaEl.innerHTML = `✓ Produto já cadastrado: <strong>${escaparHtml(textoProduto(produtoSelecionado))}</strong>`;
-            } else if (nome) {
-                compraEscolhaEl.innerHTML = `➕ Será cadastrado um <strong>novo produto</strong>: ${escaparHtml(textoProduto({ nome, marca }))}`;
-            } else {
-                compraEscolhaEl.textContent = "Digite o nome do produto.";
-            }
-        }
-
-        function renderizarSugestoes() {
-            const parecidos = buscarParecidos();
-            compraDicaEl.textContent = parecidos.length
-                ? "Produtos já cadastrados parecidos (toque para escolher):"
-                : "Nenhum produto parecido cadastrado.";
-
-            compraSugestoesEl.innerHTML = "";
-            parecidos.forEach((produto) => {
-                const botao = document.createElement("button");
-                botao.type = "button";
-                botao.textContent = textoProduto(produto);
-                if (produto === produtoSelecionado) {
-                    botao.className = "selecionado";
-                }
-                botao.addEventListener("click", () => {
-                    produtoSelecionado = produto;
-                    compraNomeEl.value = produto.nome;
-                    compraMarcaEl.value = produto.marca;
-                    renderizarSugestoes();
-                    compraQtdEl.focus();
-                });
-                const li = document.createElement("li");
-                li.appendChild(botao);
-                compraSugestoesEl.appendChild(li);
-            });
-            atualizarEscolha();
-        }
-
-        function aoDigitarProduto() {
-            produtoSelecionado = null;
-            renderizarSugestoes();
-        }
+        const seletorCompra = criarSeletorProduto({
+            nomeEl: compraNomeEl,
+            marcaEl: compraMarcaEl,
+            dicaEl: document.getElementById("compra-dica"),
+            listaEl: document.getElementById("compra-produtos"),
+            aoEscolher: confirmarCompra
+        });
 
         async function abrirCompra(id) {
             pedidoAtual = pedidos.find((p) => p.id === id);
             if (!pedidoAtual) return;
 
-            produtos = await listarProdutos();
-            buscaNome = new Fuse(produtos, { ...OPCOES_BUSCA, keys: ["nome"] });
-            buscaMarca = new Fuse(produtos, { ...OPCOES_BUSCA, keys: ["marca"] });
-
             compraPedidoEl.textContent = `${pedidoAtual.nome} (cliente: ${pedidoAtual.cliente})`;
+            compraQtdEl.value = 1;
             compraNomeEl.value = pedidoAtual.nome;
             compraMarcaEl.value = "";
-            compraQtdEl.value = 1;
-            produtoSelecionado = null;
-            renderizarSugestoes();
+            await seletorCompra.recarregar();
             dialogoEl.showModal();
-            compraNomeEl.focus();
+            compraQtdEl.select();
         }
 
-        async function confirmarCompra(event) {
-            event.preventDefault();
-            const nome = compraNomeEl.value.trim();
-            const marca = compraMarcaEl.value.trim();
+        async function confirmarCompra(produto) {
             const quantidade = parseInt(compraQtdEl.value, 10);
-            if (!nome || !(quantidade > 0)) return;
-
-            // Mesmo nome e marca de um produto existente: usa ele sem perguntar.
-            const produto = produtoSelecionado
-                || produtos.find((p) => mesmoTexto(p.nome, nome) && mesmoTexto(p.marca, marca));
-            if (!produto && !confirm(`Cadastrar o novo produto "${textoProduto({ nome, marca })}"?`)) {
+            if (!(quantidade > 0)) {
+                alert("Informe a quantidade comprada.");
+                compraQtdEl.focus();
                 return;
             }
 
             try {
-                await registrarCompra({
-                    itemId: pedidoAtual.id,
-                    produtoId: produto ? produto.id : null,
-                    nome,
-                    marca,
-                    quantidade
-                });
+                await registrarCompra(pedidoAtual.id, produto, quantidade);
                 dialogoEl.close();
-                msgEl.textContent = `✓ Compra registrada: ${quantidade} × ${textoProduto(produto || { nome, marca })}`;
+                msgEl.textContent = `✓ Compra registrada: ${quantidade} × ${textoProduto(produto)}`;
                 msgEl.classList.remove("erro");
                 await renderizar();
             } catch (erro) {
@@ -580,9 +451,6 @@
             }
         }
 
-        compraNomeEl.addEventListener("input", aoDigitarProduto);
-        compraMarcaEl.addEventListener("input", aoDigitarProduto);
-        formCompraEl.addEventListener("submit", confirmarCompra);
         document.getElementById("btn-compra-cancelar").addEventListener("click", () => dialogoEl.close());
 
         btnSalvarEl.addEventListener("click", salvar);

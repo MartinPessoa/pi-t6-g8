@@ -41,10 +41,24 @@ const CREATE_TABLES = `
 const SELECT_ALL = "SELECT id, nome, cliente, data_adicionado FROM itens ORDER BY data_adicionado DESC, id DESC";
 const INSERT = "INSERT INTO itens (nome, cliente) VALUES (?, ?)";
 const DELETE = "DELETE FROM itens WHERE id = ?";
-const SELECT_PRODUTOS = "SELECT id, nome, marca FROM produtos ORDER BY nome, marca";
+const SELECT_PRODUTOS = `
+  SELECT p.id, p.nome, p.marca,
+    COALESCE((SELECT SUM(quantidade) FROM compras WHERE produto_id = p.id), 0)
+    - COALESCE((SELECT SUM(quantidade) FROM vendas WHERE produto_id = p.id), 0) AS estoque
+  FROM produtos p
+  ORDER BY p.nome, p.marca
+`;
 const INSERT_PRODUTO = "INSERT OR IGNORE INTO produtos (nome, marca) VALUES (?, ?)";
 const SELECT_PRODUTO_ID = "SELECT id FROM produtos WHERE nome = ? AND marca = ?";
 const INSERT_COMPRA = "INSERT INTO compras (produto_id, quantidade) VALUES (?, ?)";
+const INSERT_VENDA = "INSERT INTO vendas (produto_id, quantidade) VALUES (?, ?)";
+const SELECT_VENDAS = `
+  SELECT v.id, v.quantidade, v.data, p.nome, p.marca
+  FROM vendas v JOIN produtos p ON p.id = v.produto_id
+  ORDER BY v.data DESC, v.id DESC
+  LIMIT 50
+`;
+const DELETE_VENDA = "DELETE FROM vendas WHERE id = ?";
 
 let SQL;
 let db;
@@ -128,23 +142,51 @@ async function removerItemDoBanco(id) {
     await salvarBanco();
 }
 
-// Registra a compra de um pedido e remove o pedido da lista.
-// produtoId = produto ja cadastrado; sem produtoId, cadastra (ou reaproveita) o produto nome/marca.
-async function registrarCompra({ itemId, produtoId, nome, marca, quantidade }) {
+// Executa as alteracoes de uma vez so (tudo ou nada) e salva o banco.
+async function emTransacao(alteracoes) {
     await bancoPronto;
     db.run("BEGIN");
     try {
-        if (!produtoId) {
-            db.run(INSERT_PRODUTO, [nome, marca]);
-            produtoId = consultar(SELECT_PRODUTO_ID, [nome, marca])[0].id;
-        }
-        db.run(INSERT_COMPRA, [produtoId, quantidade]);
-        db.run(DELETE, [itemId]);
+        alteracoes();
         db.run("COMMIT");
     } catch (erro) {
         db.run("ROLLBACK");
         throw erro;
     }
+    await salvarBanco();
+}
+
+// produto.id = produto ja cadastrado; sem id, cadastra (ou reaproveita) o produto nome/marca.
+function idDoProduto(produto) {
+    if (produto.id) {
+        return produto.id;
+    }
+    db.run(INSERT_PRODUTO, [produto.nome, produto.marca]);
+    return consultar(SELECT_PRODUTO_ID, [produto.nome, produto.marca])[0].id;
+}
+
+// Registra a compra de um pedido e remove o pedido da lista.
+async function registrarCompra(itemId, produto, quantidade) {
+    await emTransacao(() => {
+        db.run(INSERT_COMPRA, [idDoProduto(produto), quantidade]);
+        db.run(DELETE, [itemId]);
+    });
+}
+
+async function registrarVenda(produto, quantidade) {
+    await emTransacao(() => {
+        db.run(INSERT_VENDA, [idDoProduto(produto), quantidade]);
+    });
+}
+
+async function listarVendas() {
+    await bancoPronto;
+    return consultar(SELECT_VENDAS);
+}
+
+async function removerVenda(id) {
+    await bancoPronto;
+    db.run(DELETE_VENDA, [id]);
     await salvarBanco();
 }
 

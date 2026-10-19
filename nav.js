@@ -4,7 +4,7 @@
 const PAGINAS = [
     { titulo: "📋 Pedidos", href: "index.html" },
     { titulo: "📊 Lista completa", href: "list.html" },
-    { titulo: "🛒 Vendas" },
+    { titulo: "🛒 Vendas", href: "vendas.html" },
     { titulo: "📦 Estoque" }
 ];
 
