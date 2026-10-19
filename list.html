@@ -134,7 +134,7 @@
 <body>
     <main>
         <div class="nav-links">
-            <a href="/">← Voltar para adicionar itens</a>
+            <a href="index.html">← Voltar para adicionar itens</a>
         </div>
 
         <h1>📊 Visualização de Recados</h1>
@@ -159,8 +159,9 @@
         </div>
     </main>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+    <script src="db.js"></script>
     <script>
-        const API_URL = "/dados";
         const corpoRecadosEl = document.getElementById("corpo-recados");
         const msgEl = document.getElementById("mensagem");
 
@@ -240,8 +241,8 @@
                 return `
                     <tr>
                         <td>${item.id || '-'}</td>
-                        <td><strong>${item.nome || '-'}</strong></td>
-                        <td>${item.cliente || '-'}</td>
+                        <td><strong>${escaparHtml(item.nome || '-')}</strong></td>
+                        <td>${escaparHtml(item.cliente || '-')}</td>
                         <td class="data">${formatarData(item.data_adicionado)}</td>
                     </tr>
                 `;
@@ -250,14 +251,10 @@
 
         async function carregarDados() {
             try {
-                const resposta = await fetch(API_URL);
-                if (!resposta.ok) {
-                    throw new Error("Erro ao carregar lista");
-                }
-                dadosOriginais = await resposta.json();
+                dadosOriginais = await listarItens();
                 renderizarTabela();
             } catch (erro) {
-                msgEl.textContent = "Erro ao carregar a lista. Verifique se o servidor está rodando.";
+                msgEl.textContent = "Erro ao carregar a lista.";
                 msgEl.classList.add("erro");
                 console.error(erro);
             }

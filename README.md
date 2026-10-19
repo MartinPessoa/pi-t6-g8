@@ -1,113 +1,54 @@
 # Projeto Integrador - Univesp
 ## Turma 6 - Grupo 8
-- TypeScript + PostgreSQL
+- HTML + JavaScript + SQLite (no navegador)
 
 Aplicacao simples de lista para mercearia, com foco em uso facil para publico idoso.
 
-## Arquitetura atual
+## Arquitetura
 
-- Backend em TypeScript (`src/server.ts`)
-- Persistencia em PostgreSQL com `pg`
-- Frontend (`index.html`) consumindo a API `GET/POST/DELETE /dados`
+- Site estatico, sem servidor: `index.html` (adicionar/remover itens) e `list.html` (lista com ordenacao)
+- Banco SQLite rodando no proprio navegador via [sql.js](https://sql.js.org) (SQLite compilado para WebAssembly)
+- `db.js` concentra o acesso ao banco (`listarItens`, `adicionarItem`, `removerItemDoBanco`, backup)
+- O arquivo do banco e salvo no IndexedDB do navegador apos cada alteracao
+
+### Limitacao importante
+
+Os dados ficam **somente no navegador e dispositivo** onde foram cadastrados.
+Outro computador, outro navegador ou uma janela anonima mostram uma lista vazia, e limpar os dados do
+navegador apaga a lista. Por isso a pagina inicial tem os botoes **Exportar backup** (baixa o arquivo `.db`)
+e **Importar backup** (restaura um `.db`, inclusive em outro dispositivo).
+
+O uso previsto e um unico dispositivo na mercearia (ex.: um computador ou tablet no balcao).
 
 ## Modelo de Dados
 
-A tabela `itens` armazena itens que os clientes nao encontraram na loja:
+A tabela `itens` (ver `banco.sql`) armazena itens que os clientes nao encontraram na loja:
 
 | Campo | Tipo | Descricao |
 |-------|------|-----------|
-| id | SERIAL | Chave primaria |
+| id | INTEGER | Chave primaria (autoincremento) |
 | nome | TEXT | Nome do item (ex.: "Arroz integral 5kg") |
 | cliente | TEXT | Nome do cliente que solicitou (ex.: "Joao Silva") |
-| data_adicionado | TIMESTAMP | Data/hora do registro (auto-gerado pelo banco) |
+| data_adicionado | TEXT | Data/hora do registro em UTC (ISO 8601, gerada pelo banco) |
 
-## Requisitos
-
-- Node.js 18+
-- npm
-- PostgreSQL local (para desenvolvimento)
-
-## Instalar dependencias
-
-```bash
-npm install
-```
-
-## Configurar ambiente local
-
-1. Copie o arquivo de exemplo:
-
-```bash
-cp .env.example .env
-```
-
-2. Ajuste `DATABASE_URL` no `.env` para o seu PostgreSQL local.
-
-Exemplo:
-
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/pi_t6_g8
-PORT=3000
-NODE_ENV=development
-PGSSL=false
-AUTO_CREATE_DB=true
-```
-
-Se voce usar variaveis `PG*` (`PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE`), o servidor tenta criar automaticamente o banco informado em `PGDATABASE` no startup (somente ambiente local).
-
-## Scripts
-
-```bash
-npm run dev       # Roda servidor TS com tsx
-npm run typecheck # Valida tipos sem gerar arquivos
-npm run build     # Compila TypeScript -> JavaScript em dist/
-npm run start     # Inicia servidor compilado
-```
+O arquivo exportado e um banco SQLite comum e pode ser aberto em qualquer ferramenta (ex.: DB Browser for SQLite).
 
 ## Executar localmente
 
+O WebAssembly nao carrega abrindo o arquivo direto (`file://`), entao use qualquer servidor estatico:
+
 ```bash
-npm run dev
+npx serve .
 ```
 
-Abra no navegador:
+Abra no navegador o endereco mostrado (ex.: `http://localhost:3000`).
 
-```text
-http://localhost:3000
-```
+## Publicacao (gratuita)
 
-Na primeira execucao, o backend cria automaticamente a tabela `itens` se ela nao existir.
+Por ser um site estatico, pode ser publicado no **GitHub Pages**:
 
-## Deploy no Render
+1. No GitHub: Settings > Pages
+2. Source: "Deploy from a branch", branch `main`, pasta `/ (root)`
+3. O site fica em `https://<usuario>.github.io/<repositorio>/`
 
-No servico Web do Render, configure as variaveis:
-
-- `DATABASE_URL`: URL do PostgreSQL gerenciado no Render
-- `NODE_ENV=production`
-- `PORT` (normalmente fornecida pelo Render)
-- `PGSSL=true` (se a conexao exigir SSL)
-
-Com isso, o mesmo codigo funciona localmente e em producao sem trocar query ou credencial no codigo.
-
-## API
-
-### GET /dados
-
-Retorna todos os itens em ordem decrescente de data.
-
-### POST /dados
-
-Cria um novo item. Campos obrigatorios: `nome`, `cliente`.
-
-Exemplo:
-
-```json
-{
-  "nome": "Feijao carioca 1kg",
-  "cliente": "Joao Silva"
-}
-```
-
-### DELETE /dados/:id
-
-Remove um item por ID.
+Alternativas gratuitas: Azure Static Web Apps (plano Free) ou Firebase Hosting.

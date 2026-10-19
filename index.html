@@ -159,6 +159,17 @@
                 width: 100%;
             }
         }
+
+        .backup {
+            margin-top: 24px;
+            padding-top: 16px;
+            border-top: 2px solid #ddd;
+        }
+
+        .backup p {
+            margin: 0 0 10px;
+            color: #555;
+        }
     </style>
 </head>
 <body>
@@ -166,7 +177,7 @@
         <h1>📋 Lista da Mercearia</h1>
 
         <div style="margin-bottom: 20px;">
-            <a href="/list" style="color: #005fcc; text-decoration: none; font-size: 1rem;">Ver lista completa com ordenação →</a>
+            <a href="list.html" style="color: #005fcc; text-decoration: none; font-size: 1rem;">Ver lista completa com ordenação →</a>
         </div>
 
         <div class="formulario">
@@ -195,11 +206,18 @@
                 </tbody>
             </table>
         </div>
+
+        <div class="backup">
+            <p>Os dados ficam salvos somente neste navegador. Faça backup de vez em quando.</p>
+            <button id="btn-exportar" type="button">Exportar backup</button>
+            <button id="btn-importar" type="button">Importar backup</button>
+            <input id="arquivo-backup" type="file" accept=".db,.sqlite,.sqlite3" hidden>
+        </div>
     </main>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+    <script src="db.js"></script>
     <script>
-        // Use same-origin API so localhost and Render work without hardcoded host.
-        const API_URL = "/dados";
         const nomeEl = document.getElementById("nome");
         const clienteEl = document.getElementById("cliente");
         const corpoRecadosEl = document.getElementById("corpo-recados");
@@ -220,11 +238,7 @@
 
         async function renderizar() {
             try {
-                const resposta = await fetch(API_URL);
-                if (!resposta.ok) {
-                    throw new Error("Erro ao carregar lista");
-                }
-                const dados = await resposta.json();
+                const dados = await listarItens();
 
                 if (dados.length === 0) {
                     corpoRecadosEl.innerHTML = `
@@ -238,8 +252,8 @@
                 corpoRecadosEl.innerHTML = dados.map((item) => {
                     return `
                         <tr>
-                            <td><strong>${item.nome}</strong></td>
-                            <td>${item.cliente}</td>
+                            <td><strong>${escaparHtml(item.nome)}</strong></td>
+                            <td>${escaparHtml(item.cliente)}</td>
                             <td class="data">${formatarData(item.data_adicionado)}</td>
                             <td>
                                 <div class="acoes">
@@ -252,7 +266,7 @@
                     `;
                 }).join("");
             } catch (erro) {
-                msgEl.textContent = "Erro ao carregar a lista. Verifique se o servidor está rodando.";
+                msgEl.textContent = "Erro ao carregar a lista.";
                 msgEl.classList.add("erro");
                 console.error(erro);
             }
@@ -269,15 +283,7 @@
             }
 
             try {
-                const resposta = await fetch(API_URL, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ nome, cliente })
-                });
-
-                if (!resposta.ok) {
-                    throw new Error("Erro ao salvar");
-                }
+                await adicionarItem(nome, cliente);
 
                 msgEl.textContent = "✓ Item adicionado com sucesso!";
                 msgEl.classList.remove("erro");
@@ -299,13 +305,7 @@
             }
 
             try {
-                const resposta = await fetch(`${API_URL}/${id}`, {
-                    method: "DELETE"
-                });
-
-                if (!resposta.ok) {
-                    throw new Error("Erro ao remover");
-                }
+                await removerItemDoBanco(id);
 
                 msgEl.textContent = "✓ Item removido!";
                 msgEl.classList.remove("erro");
@@ -326,6 +326,26 @@
         clienteEl.addEventListener("keydown", (event) => {
             if (event.key === "Enter") {
                 salvar();
+            }
+        });
+
+        document.getElementById("btn-exportar").addEventListener("click", exportarBanco);
+        const arquivoBackupEl = document.getElementById("arquivo-backup");
+        document.getElementById("btn-importar").addEventListener("click", () => arquivoBackupEl.click());
+        arquivoBackupEl.addEventListener("change", async () => {
+            const arquivo = arquivoBackupEl.files[0];
+            arquivoBackupEl.value = "";
+            if (!arquivo) return;
+            if (!confirm("Importar o backup vai substituir a lista atual. Continuar?")) return;
+            try {
+                await importarBanco(arquivo);
+                msgEl.textContent = "✓ Backup importado!";
+                msgEl.classList.remove("erro");
+                await renderizar();
+            } catch (erro) {
+                msgEl.textContent = "Arquivo de backup inválido.";
+                msgEl.classList.add("erro");
+                console.error(erro);
             }
         });
 
