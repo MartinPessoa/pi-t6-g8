@@ -33,24 +33,25 @@
         }
 
         h2 {
-            margin-top: 32px;
+            margin: 0 0 12px;
+            font-size: 1.4rem;
         }
 
-        .formulario {
+        .etapa {
             display: flex;
             flex-direction: column;
             gap: 12px;
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             padding: 16px;
             background: #f0f0f0;
             border-radius: 8px;
         }
 
-        .formulario label {
+        .etapa label {
             font-weight: bold;
         }
 
-        .formulario label input {
+        .etapa label input {
             display: block;
             width: 100%;
             margin-top: 4px;
@@ -72,6 +73,11 @@
             padding: 14px;
             border: 2px solid #666;
             border-radius: 8px;
+        }
+
+        input.faltando {
+            border-color: #c33;
+            background: #fde8e8;
         }
 
         #venda-qtd {
@@ -98,21 +104,15 @@
             color: #555;
         }
 
-        #mensagem {
-            margin: 12px 0;
-            font-size: 1rem;
-            color: #0a5;
-            font-weight: bold;
-        }
-
-        #mensagem.erro {
-            color: #c33;
+        .rolagem {
+            overflow-x: auto;
         }
 
         table {
             width: 100%;
             border-collapse: collapse;
             font-size: 1rem;
+            background: #fff;
         }
 
         thead {
@@ -127,12 +127,26 @@
         }
 
         td {
-            padding: 14px 12px;
+            padding: 10px 12px;
             border-bottom: 1px solid #ddd;
         }
 
-        tbody tr:hover {
-            background: #f9f9f9;
+        .numero {
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .carrinho input {
+            width: 100%;
+            padding: 10px;
+        }
+
+        .carrinho .col-qtd {
+            width: 90px;
+        }
+
+        .carrinho .col-preco {
+            width: 140px;
         }
 
         .btn-remover {
@@ -145,9 +159,96 @@
             background: #c82333;
         }
 
+        .total {
+            margin: 0;
+            text-align: right;
+            font-size: 2rem;
+            font-weight: bold;
+        }
+
+        #recebido {
+            max-width: 220px;
+        }
+
+        .atalhos {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .atalhos button {
+            background: #fff;
+            color: #005fcc;
+            border: 2px solid #005fcc;
+        }
+
+        .atalhos button:hover {
+            background: #e7f1ff;
+        }
+
+        #troco {
+            margin: 0;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            background: #fff;
+            color: #555;
+        }
+
+        #troco.positivo {
+            background: #d1f0dc;
+            color: #146c43;
+        }
+
+        #troco.falta {
+            background: #fde8e8;
+            color: #a00;
+        }
+
+        .botoes-finais {
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .btn-cancelar {
+            background: #6c757d;
+        }
+
+        .btn-cancelar:hover {
+            background: #5a6268;
+        }
+
+        .btn-finalizar {
+            background: #198754;
+            font-size: 1.4rem;
+        }
+
+        .btn-finalizar:hover {
+            background: #146c43;
+        }
+
+        #mensagem {
+            margin: 12px 0;
+            font-size: 1.1rem;
+            color: #0a5;
+            font-weight: bold;
+        }
+
+        #mensagem.erro {
+            color: #c33;
+        }
+
+        .ultimas {
+            margin-top: 32px;
+        }
+
         .vazio {
             text-align: center;
-            padding: 40px 20px;
+            padding: 30px 20px;
             color: #666;
             font-size: 1.1rem;
         }
@@ -165,6 +266,10 @@
             th, td {
                 padding: 8px;
             }
+
+            .total {
+                font-size: 1.6rem;
+            }
         }
     </style>
 </head>
@@ -172,8 +277,9 @@
     <main>
         <h1>🛒 Registrar venda</h1>
 
-        <div class="formulario">
-            <label>Quantidade vendida
+        <section class="etapa">
+            <h2>1. Adicionar produto</h2>
+            <label>Quantidade
                 <input id="venda-qtd" type="number" min="1" step="1" value="1">
             </label>
             <div class="linha-form">
@@ -186,26 +292,70 @@
             </div>
             <p class="dica" id="venda-dica"></p>
             <ul id="venda-produtos"></ul>
-        </div>
+        </section>
+
+        <section class="etapa">
+            <h2>2. Venda atual</h2>
+            <div class="rolagem">
+                <table class="carrinho">
+                    <thead>
+                        <tr>
+                            <th>Produto</th>
+                            <th class="col-qtd">Qtd.</th>
+                            <th class="col-preco">Preço (R$)</th>
+                            <th class="numero">Subtotal</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-carrinho"></tbody>
+                </table>
+            </div>
+            <p class="total">Total: <span id="total">R$ 0,00</span></p>
+        </section>
+
+        <section class="etapa">
+            <h2>3. Pagamento</h2>
+            <label>Valor recebido (deixe em branco se for Pix ou cartão)
+                <input id="recebido" type="text" inputmode="decimal" placeholder="0,00" autocomplete="off">
+            </label>
+            <div class="atalhos">
+                <button type="button" id="btn-exato">Valor exato</button>
+                <button type="button" data-valor="1000">R$ 10</button>
+                <button type="button" data-valor="2000">R$ 20</button>
+                <button type="button" data-valor="5000">R$ 50</button>
+                <button type="button" data-valor="10000">R$ 100</button>
+            </div>
+            <p id="troco">Troco: -</p>
+            <div class="botoes-finais">
+                <button type="button" class="btn-cancelar" id="btn-cancelar">Cancelar venda</button>
+                <button type="button" class="btn-finalizar" id="btn-finalizar">✓ Finalizar venda</button>
+            </div>
+        </section>
 
         <p id="mensagem"></p>
 
-        <h2>Últimas vendas</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Produto</th>
-                    <th>Quantidade</th>
-                    <th>Data</th>
-                    <th>Ações</th>
-                </tr>
-            </thead>
-            <tbody id="corpo-vendas">
-                <tr class="vazio">
-                    <td colspan="4">Carregando...</td>
-                </tr>
-            </tbody>
-        </table>
+        <section class="ultimas">
+            <h2>Últimas vendas</h2>
+            <div class="rolagem">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Itens</th>
+                            <th class="numero">Total</th>
+                            <th class="numero">Recebido</th>
+                            <th class="numero">Troco</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="corpo-vendas">
+                        <tr class="vazio">
+                            <td colspan="6">Carregando...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
@@ -217,8 +367,15 @@
         const qtdEl = document.getElementById("venda-qtd");
         const nomeEl = document.getElementById("venda-nome");
         const marcaEl = document.getElementById("venda-marca");
+        const corpoCarrinhoEl = document.getElementById("corpo-carrinho");
+        const totalEl = document.getElementById("total");
+        const recebidoEl = document.getElementById("recebido");
+        const trocoEl = document.getElementById("troco");
         const corpoVendasEl = document.getElementById("corpo-vendas");
         const msgEl = document.getElementById("mensagem");
+
+        // Itens da venda atual: { produto, quantidade, precoCentavos (null = ainda sem preco) }
+        let carrinho = [];
 
         function formatarData(dataStr) {
             if (!dataStr) return "-";
@@ -232,24 +389,223 @@
             });
         }
 
+        // Valor para o campo de preco, sem "R$" (ex.: 2590 -> "25,90").
+        function centavosParaCampo(centavos) {
+            return centavos == null ? "" : (centavos / 100).toFixed(2).replace(".", ",");
+        }
+
+        function mostrarMensagem(texto, erro = false) {
+            msgEl.textContent = texto;
+            msgEl.classList.toggle("erro", erro);
+        }
+
+        function mesmoProduto(a, b) {
+            if (a.id || b.id) return a.id === b.id;
+            return mesmoTexto(a.nome, b.nome) && mesmoTexto(a.marca, b.marca);
+        }
+
+        function subtotal(item) {
+            return item.precoCentavos == null || !(item.quantidade > 0) ? null : item.quantidade * item.precoCentavos;
+        }
+
+        function totalCarrinho() {
+            return carrinho.reduce((soma, item) => soma + (subtotal(item) || 0), 0);
+        }
+
+        // ---- 1. Adicionar produto ----
+        function adicionarAoCarrinho(produto) {
+            const quantidade = parseInt(qtdEl.value, 10);
+            if (!(quantidade > 0)) {
+                alert("Informe a quantidade.");
+                qtdEl.focus();
+                return;
+            }
+
+            let item = carrinho.find((i) => mesmoProduto(i.produto, produto));
+            if (item) {
+                item.quantidade += quantidade;
+            } else {
+                item = { produto, quantidade, precoCentavos: produto.preco_centavos ?? null };
+                carrinho.push(item);
+            }
+
+            mostrarMensagem("");
+            qtdEl.value = 1;
+            nomeEl.value = "";
+            marcaEl.value = "";
+            seletor.renderizar();
+            renderizarCarrinho();
+
+            // Produto sem preco: leva direto para o campo de preco.
+            if (item.precoCentavos == null) {
+                corpoCarrinhoEl.querySelectorAll(".campo-preco")[carrinho.indexOf(item)].focus();
+            } else {
+                qtdEl.select();
+            }
+        }
+
+        // ---- 2. Venda atual ----
+        function renderizarCarrinho() {
+            if (carrinho.length === 0) {
+                corpoCarrinhoEl.innerHTML = `
+                    <tr class="vazio">
+                        <td colspan="5">Nenhum produto na venda. Adicione acima.</td>
+                    </tr>
+                `;
+                atualizarTotais();
+                return;
+            }
+
+            corpoCarrinhoEl.innerHTML = carrinho.map((item, indice) => `
+                <tr>
+                    <td><strong>${escaparHtml(textoProduto(item.produto))}</strong></td>
+                    <td class="col-qtd">
+                        <input class="campo-qtd" data-indice="${indice}" type="number" min="1" step="1" value="${item.quantidade}">
+                    </td>
+                    <td class="col-preco">
+                        <input class="campo-preco" data-indice="${indice}" type="text" inputmode="decimal"
+                               placeholder="0,00" value="${centavosParaCampo(item.precoCentavos)}">
+                    </td>
+                    <td class="numero subtotal"></td>
+                    <td><button type="button" class="btn-remover" data-indice="${indice}" title="Tirar da venda">✕</button></td>
+                </tr>
+            `).join("");
+
+            corpoCarrinhoEl.querySelectorAll(".campo-qtd").forEach((campo) => {
+                campo.addEventListener("input", () => {
+                    carrinho[campo.dataset.indice].quantidade = parseInt(campo.value, 10);
+                    atualizarTotais();
+                });
+            });
+            corpoCarrinhoEl.querySelectorAll(".campo-preco").forEach((campo) => {
+                campo.addEventListener("input", () => {
+                    carrinho[campo.dataset.indice].precoCentavos = lerReais(campo.value);
+                    atualizarTotais();
+                });
+            });
+            corpoCarrinhoEl.querySelectorAll(".btn-remover").forEach((botao) => {
+                botao.addEventListener("click", () => {
+                    carrinho.splice(Number(botao.dataset.indice), 1);
+                    renderizarCarrinho();
+                });
+            });
+
+            atualizarTotais();
+        }
+
+        function atualizarTotais() {
+            const linhas = corpoCarrinhoEl.querySelectorAll("tr");
+            carrinho.forEach((item, indice) => {
+                const linha = linhas[indice];
+                linha.querySelector(".subtotal").textContent = formatarReais(subtotal(item));
+                linha.querySelector(".campo-qtd").classList.toggle("faltando", !(item.quantidade > 0));
+                linha.querySelector(".campo-preco").classList.toggle("faltando", item.precoCentavos == null);
+            });
+
+            const total = totalCarrinho();
+            totalEl.textContent = formatarReais(total);
+            atualizarTroco();
+        }
+
+        // ---- 3. Pagamento ----
+        function atualizarTroco() {
+            const total = totalCarrinho();
+            const recebido = lerReais(recebidoEl.value);
+            trocoEl.classList.remove("positivo", "falta");
+            recebidoEl.classList.toggle("faltando", recebidoEl.value.trim() !== "" && recebido == null);
+
+            if (recebido == null || total === 0) {
+                trocoEl.textContent = "Troco: -";
+            } else if (recebido < total) {
+                trocoEl.textContent = `Faltam ${formatarReais(total - recebido)}`;
+                trocoEl.classList.add("falta");
+            } else {
+                trocoEl.textContent = `Troco: ${formatarReais(recebido - total)}`;
+                trocoEl.classList.add("positivo");
+            }
+        }
+
+        function limparVenda() {
+            carrinho = [];
+            recebidoEl.value = "";
+            renderizarCarrinho();
+        }
+
+        async function finalizar() {
+            if (carrinho.length === 0) {
+                mostrarMensagem("Adicione pelo menos um produto à venda.", true);
+                return;
+            }
+
+            const semQtd = carrinho.findIndex((item) => !(item.quantidade > 0));
+            if (semQtd >= 0) {
+                mostrarMensagem(`Informe a quantidade de "${textoProduto(carrinho[semQtd].produto)}".`, true);
+                corpoCarrinhoEl.querySelectorAll(".campo-qtd")[semQtd].focus();
+                return;
+            }
+
+            const semPreco = carrinho.findIndex((item) => item.precoCentavos == null);
+            if (semPreco >= 0) {
+                mostrarMensagem(`Informe o preço de "${textoProduto(carrinho[semPreco].produto)}".`, true);
+                corpoCarrinhoEl.querySelectorAll(".campo-preco")[semPreco].focus();
+                return;
+            }
+
+            const total = totalCarrinho();
+            const recebidoTexto = recebidoEl.value.trim();
+            const recebido = lerReais(recebidoTexto);
+            if (recebidoTexto !== "" && recebido == null) {
+                mostrarMensagem("Valor recebido inválido.", true);
+                recebidoEl.focus();
+                return;
+            }
+            if (recebido != null && recebido < total) {
+                mostrarMensagem(`Valor recebido é menor que o total. Faltam ${formatarReais(total - recebido)}.`, true);
+                recebidoEl.focus();
+                return;
+            }
+
+            try {
+                await finalizarVenda(carrinho, recebido);
+                const troco = recebido == null ? "" : ` · Troco: ${formatarReais(recebido - total)}`;
+                mostrarMensagem(`✓ Venda finalizada: ${formatarReais(total)}${troco}`);
+                limparVenda();
+                await seletor.recarregar();
+                await renderizarVendas();
+                qtdEl.select();
+            } catch (erro) {
+                mostrarMensagem("Erro ao finalizar a venda.", true);
+                console.error(erro);
+            }
+        }
+
+        // ---- Ultimas vendas ----
         async function renderizarVendas() {
             try {
                 const vendas = await listarVendas();
                 if (vendas.length === 0) {
                     corpoVendasEl.innerHTML = `
                         <tr class="vazio">
-                            <td colspan="4">Nenhuma venda registrada.</td>
+                            <td colspan="6">Nenhuma venda registrada.</td>
                         </tr>
                     `;
                     return;
                 }
 
                 corpoVendasEl.innerHTML = vendas.map((venda) => {
+                    const itens = venda.itens
+                        .map((item) => `${item.quantidade} × ${escaparHtml(textoProduto(item))}`)
+                        .join("<br>");
+                    const troco = venda.recebido_centavos == null || venda.total_centavos == null
+                        ? null
+                        : venda.recebido_centavos - venda.total_centavos;
                     return `
                         <tr>
-                            <td><strong>${escaparHtml(textoProduto(venda))}</strong></td>
-                            <td>${venda.quantidade}</td>
                             <td class="data">${formatarData(venda.data)}</td>
+                            <td>${itens}</td>
+                            <td class="numero"><strong>${formatarReais(venda.total_centavos)}</strong></td>
+                            <td class="numero">${formatarReais(venda.recebido_centavos)}</td>
+                            <td class="numero">${formatarReais(troco)}</td>
                             <td>
                                 <button class="btn-remover" onclick="desfazerVenda(${venda.id})">
                                     Remover
@@ -259,51 +615,23 @@
                     `;
                 }).join("");
             } catch (erro) {
-                msgEl.textContent = "Erro ao carregar as vendas.";
-                msgEl.classList.add("erro");
-                console.error(erro);
-            }
-        }
-
-        async function confirmarVenda(produto) {
-            const quantidade = parseInt(qtdEl.value, 10);
-            if (!(quantidade > 0)) {
-                alert("Informe a quantidade vendida.");
-                qtdEl.focus();
-                return;
-            }
-
-            try {
-                await registrarVenda(produto, quantidade);
-                msgEl.textContent = `✓ Venda registrada: ${quantidade} × ${textoProduto(produto)}`;
-                msgEl.classList.remove("erro");
-                qtdEl.value = 1;
-                nomeEl.value = "";
-                marcaEl.value = "";
-                await seletor.recarregar();
-                await renderizarVendas();
-                qtdEl.select();
-            } catch (erro) {
-                msgEl.textContent = "Erro ao registrar a venda.";
-                msgEl.classList.add("erro");
+                mostrarMensagem("Erro ao carregar as vendas.", true);
                 console.error(erro);
             }
         }
 
         async function desfazerVenda(id) {
-            if (!confirm("Tem certeza que deseja remover esta venda?")) {
+            if (!confirm("Tem certeza que deseja remover esta venda? Os produtos voltam para o estoque.")) {
                 return;
             }
 
             try {
                 await removerVenda(id);
-                msgEl.textContent = "✓ Venda removida!";
-                msgEl.classList.remove("erro");
+                mostrarMensagem("✓ Venda removida!");
                 await seletor.recarregar();
                 await renderizarVendas();
             } catch (erro) {
-                msgEl.textContent = "Erro ao remover a venda.";
-                msgEl.classList.add("erro");
+                mostrarMensagem("Erro ao remover a venda.", true);
                 console.error(erro);
             }
         }
@@ -313,9 +641,29 @@
             marcaEl,
             dicaEl: document.getElementById("venda-dica"),
             listaEl: document.getElementById("venda-produtos"),
-            aoEscolher: confirmarVenda
+            aoEscolher: adicionarAoCarrinho
         });
 
+        recebidoEl.addEventListener("input", atualizarTroco);
+        document.getElementById("btn-exato").addEventListener("click", () => {
+            recebidoEl.value = centavosParaCampo(totalCarrinho());
+            atualizarTroco();
+        });
+        document.querySelectorAll(".atalhos [data-valor]").forEach((botao) => {
+            botao.addEventListener("click", () => {
+                recebidoEl.value = centavosParaCampo(Number(botao.dataset.valor));
+                atualizarTroco();
+            });
+        });
+        document.getElementById("btn-cancelar").addEventListener("click", () => {
+            if (carrinho.length === 0 || confirm("Cancelar a venda atual?")) {
+                limparVenda();
+                mostrarMensagem("");
+            }
+        });
+        document.getElementById("btn-finalizar").addEventListener("click", finalizar);
+
+        renderizarCarrinho();
         seletor.recarregar();
         renderizarVendas();
     </script>

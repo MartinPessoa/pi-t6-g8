@@ -105,6 +105,12 @@
             font-weight: bold;
         }
 
+        .numero.preco {
+            font-size: 1rem;
+            font-weight: normal;
+            white-space: nowrap;
+        }
+
         tr.em-falta {
             background: #fde8e8;
             color: #a00;
@@ -159,13 +165,14 @@
                 <tr>
                     <th>Produto</th>
                     <th>Marca</th>
+                    <th class="numero">Preço</th>
                     <th class="numero">Estoque</th>
                     <th>Situação</th>
                 </tr>
             </thead>
             <tbody id="corpo-estoque">
                 <tr class="vazio">
-                    <td colspan="4">Carregando...</td>
+                    <td colspan="5">Carregando...</td>
                 </tr>
             </tbody>
         </table>
@@ -203,7 +210,7 @@
                     : "Nenhum produto encontrado.";
                 corpoEstoqueEl.innerHTML = `
                     <tr class="vazio">
-                        <td colspan="4">${texto}</td>
+                        <td colspan="5">${texto}</td>
                     </tr>
                 `;
                 return;
@@ -215,6 +222,7 @@
                     <tr class="${falta ? "em-falta" : ""}">
                         <td><strong>${escaparHtml(produto.nome)}</strong></td>
                         <td>${escaparHtml(produto.marca) || "-"}</td>
+                        <td class="numero preco">${formatarReais(produto.preco_centavos)}</td>
                         <td class="numero">${produto.estoque}</td>
                         <td><span class="situacao">${falta ? "⚠ Em falta" : "✓ Disponível"}</span></td>
                     </tr>

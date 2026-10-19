@@ -69,8 +69,9 @@ function criarSeletorProduto({ nomeEl, marcaEl, dicaEl, listaEl, aoEscolher }) {
             : "Nenhum produto parecido cadastrado.";
 
         parecidos.forEach((produto) => {
+            const preco = produto.preco_centavos == null ? "" : ` · ${formatarReais(produto.preco_centavos)}`;
             adicionarBotao(
-                `${escaparHtml(textoProduto(produto))} <small>(estoque: ${produto.estoque})</small>`,
+                `${escaparHtml(textoProduto(produto))} <small>(estoque: ${produto.estoque}${preco})</small>`,
                 "",
                 produto
             );

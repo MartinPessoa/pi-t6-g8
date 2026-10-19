@@ -6,7 +6,7 @@ Aplicacao simples de lista para mercearia, com foco em uso facil para publico id
 
 ## Arquitetura
 
-- Site estatico, sem servidor: `index.html` (pedidos e compras), `list.html` (lista com ordenacao), `vendas.html` (vendas) e `estoque.html` (estoque, com produtos em falta em vermelho)
+- Site estatico, sem servidor: `index.html` (pedidos e compras), `list.html` (lista com ordenacao), `vendas.html` (vendas com total e troco) e `estoque.html` (estoque, com produtos em falta em vermelho)
 - Banco SQLite rodando no proprio navegador via [sql.js](https://sql.js.org) (SQLite compilado para WebAssembly)
 - `db.js` concentra o acesso ao banco (pedidos, produtos, compras, vendas, backup)
 - `produtos.js`: seletor de produto com busca, usado em compras e vendas
@@ -33,19 +33,24 @@ A tabela `itens` (ver `banco.sql`) armazena itens que os clientes nao encontrara
 | cliente | TEXT | Nome do cliente que solicitou (ex.: "Joao Silva") |
 | data_adicionado | TEXT | Data/hora do registro em UTC (ISO 8601, gerada pelo banco) |
 
-Controle de estoque (estoque de um produto = soma das compras - soma das vendas; pode ficar negativo,
+Controle de estoque e vendas (estoque de um produto = soma das compras - soma dos itens vendidos; pode ficar negativo,
 por exemplo ao vender algo que ja havia na loja antes do sistema). Produto com estoque 0 ou menos aparece como **em falta**:
 
 | Tabela | Campos | Descricao |
 |--------|--------|-----------|
-| produtos | id, nome, marca | Produtos da loja. Nome e marca separados; par (nome, marca) unico, sem diferenciar maiusculas |
+| produtos | id, nome, marca, preco_centavos | Produtos da loja. Nome e marca separados; par (nome, marca) unico, sem diferenciar maiusculas. Preco = ultimo preco de venda |
 | compras | id, produto_id, quantidade, data | Registrada ao clicar em **Comprei** em um pedido (o pedido sai da lista) |
-| vendas | id, produto_id, quantidade, data | Registrada pela pagina **Vendas** |
+| vendas | id, total_centavos, recebido_centavos, data | Uma linha por venda (recebido vazio = Pix/cartao) |
+| itens_venda | id, venda_id, produto_id, quantidade, preco_centavos | Produtos de cada venda, com o preco cobrado |
 
 Nao existe tela de cadastro de produtos: ao registrar uma compra ou venda, o dono informa a quantidade, digita o produto e a pagina mostra
 os produtos parecidos ja cadastrados (busca com [Fuse.js](https://www.fusejs.io), tolerante a erros de digitacao,
 maiusculas e acentos). Cada produto mostrado e um botao que ja salva;
 o botao **Novo produto** cadastra o que foi digitado (so aparece se ainda nao existir um produto com o mesmo nome e marca).
+
+Na pagina **Vendas**, os produtos vao para a "venda atual" com o ultimo preco usado (editavel). A pagina mostra o total
+e, ao informar o valor recebido (ou usar os atalhos R$ 10/20/50/100), o troco. Valores em dinheiro sao guardados em
+centavos (inteiros) para evitar erros de arredondamento. Bancos de versoes anteriores sao atualizados automaticamente.
 
 O arquivo exportado e um banco SQLite comum e pode ser aberto em qualquer ferramenta (ex.: DB Browser for SQLite).
 
