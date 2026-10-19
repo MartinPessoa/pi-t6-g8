@@ -32,20 +32,6 @@
             margin-bottom: 24px;
         }
 
-        .nav-links {
-            margin-bottom: 20px;
-        }
-
-        .nav-links a {
-            color: #005fcc;
-            text-decoration: none;
-            font-size: 1rem;
-        }
-
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-
         .lista-container {
             margin-top: 24px;
         }
@@ -133,10 +119,6 @@
 </head>
 <body>
     <main>
-        <div class="nav-links">
-            <a href="index.html">← Voltar para adicionar itens</a>
-        </div>
-
         <h1>📊 Visualização de Recados</h1>
         <p id="mensagem"></p>
 
@@ -161,6 +143,7 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
     <script src="db.js"></script>
+    <script src="nav.js"></script>
     <script>
         const corpoRecadosEl = document.getElementById("corpo-recados");
         const msgEl = document.getElementById("mensagem");

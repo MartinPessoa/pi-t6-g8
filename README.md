@@ -31,6 +31,18 @@ A tabela `itens` (ver `banco.sql`) armazena itens que os clientes nao encontrara
 | cliente | TEXT | Nome do cliente que solicitou (ex.: "Joao Silva") |
 | data_adicionado | TEXT | Data/hora do registro em UTC (ISO 8601, gerada pelo banco) |
 
+Controle de estoque (estoque de um produto = soma das compras - soma das vendas):
+
+| Tabela | Campos | Descricao |
+|--------|--------|-----------|
+| produtos | id, nome, marca | Produtos da loja. Nome e marca separados; par (nome, marca) unico, sem diferenciar maiusculas |
+| compras | id, produto_id, quantidade, data | Registrada ao clicar em **Comprei** em um pedido (o pedido sai da lista) |
+| vendas | id, produto_id, quantidade, data | Registrada pela pagina de vendas (em breve) |
+
+Nao existe tela de cadastro de produtos: ao registrar uma compra, o dono digita o produto e a pagina mostra
+os produtos parecidos ja cadastrados (busca com [Fuse.js](https://www.fusejs.io), tolerante a erros de digitacao,
+maiusculas e acentos). Ele escolhe um existente ou confirma o cadastro de um novo.
+
 O arquivo exportado e um banco SQLite comum e pode ser aberto em qualquer ferramenta (ex.: DB Browser for SQLite).
 
 ## Executar localmente

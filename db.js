@@ -6,18 +6,45 @@ const IDB_NOME = "pi-t6-g8";
 const IDB_STORE = "arquivos";
 const IDB_CHAVE = "pi-t6-g8.db";
 
-const CREATE_TABLE = `
+// itens = pedidos dos clientes (o que nao encontraram na loja).
+// produtos/compras/vendas = controle de estoque (estoque = compras - vendas).
+const CREATE_TABLES = `
   CREATE TABLE IF NOT EXISTS itens (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nome TEXT NOT NULL,
     cliente TEXT NOT NULL,
     data_adicionado TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
-  )
+  );
+
+  CREATE TABLE IF NOT EXISTS produtos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nome TEXT NOT NULL COLLATE NOCASE,
+    marca TEXT NOT NULL DEFAULT '' COLLATE NOCASE,
+    UNIQUE (nome, marca)
+  );
+
+  CREATE TABLE IF NOT EXISTS compras (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    produto_id INTEGER NOT NULL REFERENCES produtos(id),
+    quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+    data TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS vendas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    produto_id INTEGER NOT NULL REFERENCES produtos(id),
+    quantidade INTEGER NOT NULL CHECK (quantidade > 0),
+    data TEXT DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+  );
 `;
 
 const SELECT_ALL = "SELECT id, nome, cliente, data_adicionado FROM itens ORDER BY data_adicionado DESC, id DESC";
 const INSERT = "INSERT INTO itens (nome, cliente) VALUES (?, ?)";
 const DELETE = "DELETE FROM itens WHERE id = ?";
+const SELECT_PRODUTOS = "SELECT id, nome, marca FROM produtos ORDER BY nome, marca";
+const INSERT_PRODUTO = "INSERT OR IGNORE INTO produtos (nome, marca) VALUES (?, ?)";
+const SELECT_PRODUTO_ID = "SELECT id FROM produtos WHERE nome = ? AND marca = ?";
+const INSERT_COMPRA = "INSERT INTO compras (produto_id, quantidade) VALUES (?, ?)";
 
 let SQL;
 let db;
@@ -58,7 +85,7 @@ async function iniciarBanco() {
     SQL = await initSqlJs({ locateFile: (arquivo) => SQL_JS_CDN + arquivo });
     const bytes = await lerArquivo();
     db = bytes ? new SQL.Database(bytes) : new SQL.Database();
-    db.run(CREATE_TABLE);
+    db.run(CREATE_TABLES);
 
     // Pede ao navegador para nao apagar os dados quando faltar espaco.
     if (navigator.storage && navigator.storage.persist) {
@@ -68,15 +95,25 @@ async function iniciarBanco() {
 
 const bancoPronto = iniciarBanco();
 
-async function listarItens() {
-    await bancoPronto;
-    const itens = [];
-    const stmt = db.prepare(SELECT_ALL);
+function consultar(sql, params = []) {
+    const linhas = [];
+    const stmt = db.prepare(sql);
+    stmt.bind(params);
     while (stmt.step()) {
-        itens.push(stmt.getAsObject());
+        linhas.push(stmt.getAsObject());
     }
     stmt.free();
-    return itens;
+    return linhas;
+}
+
+async function listarItens() {
+    await bancoPronto;
+    return consultar(SELECT_ALL);
+}
+
+async function listarProdutos() {
+    await bancoPronto;
+    return consultar(SELECT_PRODUTOS);
 }
 
 async function adicionarItem(nome, cliente) {
@@ -88,6 +125,26 @@ async function adicionarItem(nome, cliente) {
 async function removerItemDoBanco(id) {
     await bancoPronto;
     db.run(DELETE, [id]);
+    await salvarBanco();
+}
+
+// Registra a compra de um pedido e remove o pedido da lista.
+// produtoId = produto ja cadastrado; sem produtoId, cadastra (ou reaproveita) o produto nome/marca.
+async function registrarCompra({ itemId, produtoId, nome, marca, quantidade }) {
+    await bancoPronto;
+    db.run("BEGIN");
+    try {
+        if (!produtoId) {
+            db.run(INSERT_PRODUTO, [nome, marca]);
+            produtoId = consultar(SELECT_PRODUTO_ID, [nome, marca])[0].id;
+        }
+        db.run(INSERT_COMPRA, [produtoId, quantidade]);
+        db.run(DELETE, [itemId]);
+        db.run("COMMIT");
+    } catch (erro) {
+        db.run("ROLLBACK");
+        throw erro;
+    }
     await salvarBanco();
 }
 
@@ -115,6 +172,7 @@ async function importarBanco(arquivo) {
     }
     db.close();
     db = novoDb;
+    db.run(CREATE_TABLES); // backups antigos podem nao ter as tabelas novas
     await salvarBanco();
 }
 
