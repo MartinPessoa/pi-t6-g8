@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estoque - Mercearia</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            background: #f7f7f7;
+            color: #111;
+            padding: 10px;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            border: 2px solid #ddd;
+            border-radius: 12px;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-top: 0;
+            margin-bottom: 24px;
+        }
+
+        .filtros {
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+            margin-bottom: 16px;
+            padding: 16px;
+            background: #f0f0f0;
+            border-radius: 8px;
+        }
+
+        #busca {
+            flex: 1;
+            min-width: 200px;
+            font-size: 1.2rem;
+            padding: 14px;
+            border: 2px solid #666;
+            border-radius: 8px;
+        }
+
+        .filtros label {
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+
+        .filtros input[type="checkbox"] {
+            width: 22px;
+            height: 22px;
+            vertical-align: middle;
+        }
+
+        #resumo {
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        #resumo.ha-falta {
+            color: #c33;
+        }
+
+        #mensagem.erro {
+            color: #c33;
+            font-weight: bold;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 1rem;
+        }
+
+        thead {
+            background: #005fcc;
+            color: #fff;
+        }
+
+        th {
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        td {
+            padding: 14px 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .numero {
+            text-align: right;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        tr.em-falta {
+            background: #fde8e8;
+            color: #a00;
+        }
+
+        .situacao {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-weight: bold;
+            background: #d1f0dc;
+            color: #146c43;
+        }
+
+        tr.em-falta .situacao {
+            background: #c33;
+            color: #fff;
+        }
+
+        .vazio {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            table {
+                font-size: 0.9rem;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <h1>📦 Estoque</h1>
+
+        <div class="filtros">
+            <input id="busca" placeholder="Buscar produto ou marca" autocomplete="off">
+            <label><input id="so-em-falta" type="checkbox"> Mostrar só em falta</label>
+        </div>
+
+        <p id="resumo"></p>
+        <p id="mensagem"></p>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Produto</th>
+                    <th>Marca</th>
+                    <th class="numero">Estoque</th>
+                    <th>Situação</th>
+                </tr>
+            </thead>
+            <tbody id="corpo-estoque">
+                <tr class="vazio">
+                    <td colspan="4">Carregando...</td>
+                </tr>
+            </tbody>
+        </table>
+    </main>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
+    <script src="db.js"></script>
+    <script src="nav.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.1.0/fuse.min.js"></script>
+    <script src="produtos.js"></script>
+    <script>
+        const buscaEl = document.getElementById("busca");
+        const soEmFaltaEl = document.getElementById("so-em-falta");
+        const resumoEl = document.getElementById("resumo");
+        const corpoEstoqueEl = document.getElementById("corpo-estoque");
+        const msgEl = document.getElementById("mensagem");
+
+        let produtos = [];
+        let busca = new Fuse([], OPCOES_BUSCA);
+
+        function emFalta(produto) {
+            return produto.estoque <= 0;
+        }
+
+        function renderizarTabela() {
+            const termo = buscaEl.value.trim();
+            let lista = termo ? busca.search(termo).map((r) => r.item) : produtos;
+            if (soEmFaltaEl.checked) {
+                lista = lista.filter(emFalta);
+            }
+
+            if (lista.length === 0) {
+                const texto = produtos.length === 0
+                    ? "Nenhum produto cadastrado. Os produtos são cadastrados ao registrar compras ou vendas."
+                    : "Nenhum produto encontrado.";
+                corpoEstoqueEl.innerHTML = `
+                    <tr class="vazio">
+                        <td colspan="4">${texto}</td>
+                    </tr>
+                `;
+                return;
+            }
+
+            corpoEstoqueEl.innerHTML = lista.map((produto) => {
+                const falta = emFalta(produto);
+                return `
+                    <tr class="${falta ? "em-falta" : ""}">
+                        <td><strong>${escaparHtml(produto.nome)}</strong></td>
+                        <td>${escaparHtml(produto.marca) || "-"}</td>
+                        <td class="numero">${produto.estoque}</td>
+                        <td><span class="situacao">${falta ? "⚠ Em falta" : "✓ Disponível"}</span></td>
+                    </tr>
+                `;
+            }).join("");
+        }
+
+        async function carregarDados() {
+            try {
+                // Em falta primeiro; depois por nome (a consulta ja vem ordenada por nome/marca).
+                produtos = (await listarProdutos()).sort((a, b) => emFalta(b) - emFalta(a));
+                busca = new Fuse(produtos, { ...OPCOES_BUSCA, keys: ["nome", "marca"] });
+
+                const quantosEmFalta = produtos.filter(emFalta).length;
+                resumoEl.textContent = quantosEmFalta
+                    ? `⚠ ${quantosEmFalta} de ${produtos.length} produto(s) em falta`
+                    : `✓ Todos os ${produtos.length} produto(s) disponíveis`;
+                resumoEl.classList.toggle("ha-falta", quantosEmFalta > 0);
+                resumoEl.hidden = produtos.length === 0;
+
+                renderizarTabela();
+            } catch (erro) {
+                msgEl.textContent = "Erro ao carregar o estoque.";
+                msgEl.classList.add("erro");
+                console.error(erro);
+            }
+        }
+
+        buscaEl.addEventListener("input", renderizarTabela);
+        soEmFaltaEl.addEventListener("change", renderizarTabela);
+
+        carregarDados();
+    </script>
+</body>
+</html>

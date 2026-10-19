@@ -6,7 +6,7 @@ Aplicacao simples de lista para mercearia, com foco em uso facil para publico id
 
 ## Arquitetura
 
-- Site estatico, sem servidor: `index.html` (pedidos e compras), `list.html` (lista com ordenacao) e `vendas.html` (vendas)
+- Site estatico, sem servidor: `index.html` (pedidos e compras), `list.html` (lista com ordenacao), `vendas.html` (vendas) e `estoque.html` (estoque, com produtos em falta em vermelho)
 - Banco SQLite rodando no proprio navegador via [sql.js](https://sql.js.org) (SQLite compilado para WebAssembly)
 - `db.js` concentra o acesso ao banco (pedidos, produtos, compras, vendas, backup)
 - `produtos.js`: seletor de produto com busca, usado em compras e vendas
@@ -33,7 +33,8 @@ A tabela `itens` (ver `banco.sql`) armazena itens que os clientes nao encontrara
 | cliente | TEXT | Nome do cliente que solicitou (ex.: "Joao Silva") |
 | data_adicionado | TEXT | Data/hora do registro em UTC (ISO 8601, gerada pelo banco) |
 
-Controle de estoque (estoque de um produto = soma das compras - soma das vendas):
+Controle de estoque (estoque de um produto = soma das compras - soma das vendas; pode ficar negativo,
+por exemplo ao vender algo que ja havia na loja antes do sistema). Produto com estoque 0 ou menos aparece como **em falta**:
 
 | Tabela | Campos | Descricao |
 |--------|--------|-----------|

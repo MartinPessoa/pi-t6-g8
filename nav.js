@@ -5,7 +5,7 @@ const PAGINAS = [
     { titulo: "📋 Pedidos", href: "index.html" },
     { titulo: "📊 Lista completa", href: "list.html" },
     { titulo: "🛒 Vendas", href: "vendas.html" },
-    { titulo: "📦 Estoque" }
+    { titulo: "📦 Estoque", href: "estoque.html" }
 ];
 
 (function montarNav() {
